@@ -156,6 +156,11 @@ void runTest(string str, string whichTest, string &network)
 			network = "Test Division";
 			testDivision(20);
 		}
+		else if (whichTest.compare("Pow") == 0)
+		{
+			network = "Test Pow";
+			testPow();
+		}
 		else
 			assert(false && "Unknown test mode selected");
 	}

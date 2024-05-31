@@ -1502,30 +1502,56 @@ void funcRELU(const RSSVectorMyType &a, RSSVectorSmallType &temp, RSSVectorMyTyp
 void funcPow(const RSSVectorMyType &b, vector<smallType> &alpha, size_t size)
 {
 	size_t ell = 5;
-	if (BIT_SIZE == 64)
-		ell = 6;
+	// if (BIT_SIZE == 64)
+	// 	ell = 6;
 
 	RSSVectorMyType x(size), d(size), temp(size);
 	copyVectors<RSSMyType>(b, x, size);
 
 	RSSVectorSmallType c(size);
-	for (int i = 0; i < size; ++i)
+	for (int i = 0; i < size; ++i){
 		alpha[i] = 0;
+		std::cout<<"alpha["<< i <<"] is:"<< alpha[i] <<std::endl;
+	}
 
 	vector<smallType> r_c(size);
+	vector<myType> bound_extract_temp(size,0);
 	//TODO vecrorize this, right now only accepts the first argument
-	for (int j = ell-1; j > -1; --j)
+	for (int j = ell-1; j > -1; j--)
 	{
-		vector<myType> temp_1(size, (1 << ((1 << j) + (int)alpha[0])));
-		funcGetShares(temp, temp_1);
-		subtractVectors<RSSMyType>(x, temp, d, size);
-		funcRELUPrime(d, c, size);
-		funcReconstructBit(c, r_c, size, "null", false);
-		if (r_c[0] == 0)//there is opposite with protocol in essay --ljf
-		{
-			for (int i = 0; i < size; ++i)
-				alpha[i] += (1 << j);
+		vector<myType> bound_extract(size);
+		for(int i = 0; i < size; i++){
+			bound_extract_temp[i] = ((1 << j) + (int)alpha[i]);
+			std::cout<<"bound_extract_temp"<<j<<"["<< i <<"] is:"<< bound_extract_temp[i] <<std::endl;
+			bound_extract[i] =  (1 << int(bound_extract_temp[i]));
+			std::cout<<"bound_extract_"<<j<<"["<< i <<"] is:"<< bound_extract[i] <<std::endl;
+		}		
+		//vector<myType> temp_1(size, (1 << ((1 << j) + (int)alpha[0])));
+
+		//float number should be proccessed outside, 
+		for(int i = 0; i < size; i++){
+			bound_extract[i] = bound_extract[i] << FLOAT_PRECISION;
 		}
+
+		funcGetShares(temp, bound_extract);
+		subtractVectors<RSSMyType>(x, temp, d, size);
+		vector<myType> reconst(size);
+		funcReconstruct(d, reconst, size, "d", true);
+		funcReconstruct(x, reconst, size, "x", true);
+		funcReconstruct(temp, reconst, size, "temp", true);
+
+		funcRELUPrime(d, c, size);
+
+		funcReconstructBit(c, r_c, size, std::to_string(j), true);
+
+		for (int i = 0; i < size; ++i){
+			if (int(r_c[i]) == 0)//there is opposite with protocol in essay --ljf
+			{
+					alpha[i] += (1 << j);
+			}
+		}
+
+
 	}
 }
 
@@ -1697,16 +1723,26 @@ void funcDivision(const RSSVectorMyType &a, const RSSVectorMyType &b, RSSVectorM
 	// RSSVectorMyType scaledA(size);
 	// multiplyByScalar(a, (1 << (alpha + 1)), scaledA);
 
-	funcReconstruct(epsilon0, reconst, size, "epsilon0", false);
-	print_myType(reconst[0], "epsilon0[0]", "FLOAT");
-	funcReconstruct(epsilon1, reconst, size, "epsilon1", false);
-	print_myType(reconst[0], "epsilon1[0]", "FLOAT");
-	funcReconstruct(epsilon2, reconst, size, "epsilon2", false);
-	print_myType(reconst[0], "epsilon2[0]", "FLOAT");
+	//funcReconstruct(epsilon0, reconst, size, "epsilon0", false);s
+	//print_myType(reconst[0], "epsilon0[0]", "FLOAT");
+	//funcReconstruct(epsilon1, reconst, size, "epsilon1", false);
+	//print_myType(reconst[0], "epsilon1[0]", "FLOAT");
+	//funcReconstruct(epsilon2, reconst, size, "epsilon2", false);
+	//print_myType(reconst[0], "epsilon2[0]", "FLOAT");
 	// funcReconstruct(epsilon1, reconst, size, "Quot", true);
 	// print_myType(reconst[0], "Quotient[0]", "FLOAT");
 
 	funcDotProduct(answer, a, quotient, size, true, ((2*precision-FLOAT_PRECISION)));	
+}
+
+
+void funcRsqrt(const RSSVectorMyType &a, const RSSVectorMyType &b, size_t size){
+	log_print("funcRsqrt");
+
+	vector<smallType> alpha_temp(size);
+	funcPow(b, alpha_temp, size);
+
+
 }
 
 // a is of size batchSize*B, b is of size B and quotient is a/b (b from each group).
@@ -2386,13 +2422,16 @@ void testDivision(size_t iter){
 	size_t rows = 3;
 	size_t columns = 3;
 	size_t size = rows*columns;
-	vector<float> num = {2,20,200,
-						   20000,3,30,
-						   300,5,-5000};
+	// vector<float> num = {2,20,200,
+	// 					   20000,3,30,
+	// 					   300,5,5000};
+	vector<float> num = {2,2,2,
+						   2,2,2,
+						   2,2,2};
 	// vector<float> num = {2,20,200,
 	// 					   0.2,3,30,
 	// 					   30,5,50};
-	vector<float> den = {16,32,64,
+	vector<float> den = {4,32,64,
 						   100,20,40,
 						   200,5,5};
 	// vector<float> den = {8,3,6,
@@ -2404,16 +2443,19 @@ void testDivision(size_t iter){
 	vector<float> den_2 = {1516,1532,1564,
 						   1512,1600,1800,
 						   2000,-1800,10000};
-	vector<myType> data_num = {floatToMyType(2),floatToMyType(20),floatToMyType(200),
-							floatToMyType(20000),floatToMyType(3),floatToMyType(30), 
-							floatToMyType(300),floatToMyType(5),floatToMyType(-5000)},reconst1(size);
+	// vector<myType> data_num = {floatToMyType(2),floatToMyType(20),floatToMyType(200),
+	// 						floatToMyType(20000),floatToMyType(3),floatToMyType(30), 
+	// 						floatToMyType(300),floatToMyType(5),floatToMyType(-5000)},reconst1(size);
+	vector<myType> data_num = {floatToMyType(2),floatToMyType(2),floatToMyType(2),
+							floatToMyType(2),floatToMyType(2),floatToMyType(2), 
+							floatToMyType(2),floatToMyType(2),floatToMyType(2)},reconst1(size);							
 	// vector<myType> data_num = {floatToMyType(2),floatToMyType(20),floatToMyType(200),
 	// 						floatToMyType(0.2),floatToMyType(3),floatToMyType(30), 
 	// 						floatToMyType(30),floatToMyType(5),floatToMyType(50)},reconst1(size);
 	// vector<myType> data_den = {floatToMyType(8),floatToMyType(3),floatToMyType(6),
 	// 						floatToMyType(1),floatToMyType(20),floatToMyType(40), 
 	// 						floatToMyType(2),floatToMyType(50),floatToMyType(5)},reconst2(size);
-	vector<myType> data_den = {floatToMyType(16),floatToMyType(32),floatToMyType(64),
+	vector<myType> data_den = {floatToMyType(4),floatToMyType(32),floatToMyType(64),
 							floatToMyType(100),floatToMyType(20),floatToMyType(40), 
 							floatToMyType(200),floatToMyType(5),floatToMyType(5)},reconst2(size);
 	vector<myType> data_den_1 = {floatToMyType(516),floatToMyType(532),floatToMyType(564),
@@ -2445,9 +2487,13 @@ void testDivision(size_t iter){
 	funFasterDiv(a, b1, quotient1, size);
 	funFasterDiv(a, b2, quotient2, size);
 	funFasterDiv(a, b3, quotient3, size);
-	funcReconstruct(quotient1, reconst1, size, "quotient1", false);
-	funcReconstruct(quotient2, reconst2, size, "quotient2", false);
-	funcReconstruct(quotient3, reconst3, size, "quotient3", false);
+	funcReconstruct(quotient1, reconst1, size, "quotient1", true);
+	print_myType(reconst1[0], "quotient1[0]", "FLOAT");
+	print_myType(reconst1[1], "quotient1[1]", "FLOAT");
+	print_myType(reconst1[2], "quotient1[2]", "FLOAT");
+	funcReconstruct(quotient2, reconst2, size, "quotient2", true);
+	print_myType(reconst2[0], "quotient2[0]", "FLOAT");
+	funcReconstruct(quotient3, reconst3, size, "quotient3", true);
 
 	float sum1,sum2,sum3,avg_relative_error;
 	sum1 = 0;
@@ -2468,9 +2514,13 @@ void testDivision(size_t iter){
 	funcDivision(a, b1, quotient1, size);
 	funcDivision(a, b2, quotient2, size);
 	funcDivision(a, b3, quotient3, size);
-	funcReconstruct(quotient1, reconst1, size, "quotient1", false);
-	funcReconstruct(quotient2, reconst2, size, "quotient2", false);
-	funcReconstruct(quotient3, reconst3, size, "quotient3", false);
+	funcReconstruct(quotient1, reconst1, size, "quotient1", true);
+	print_myType(reconst1[0], "quotient1[0]", "FLOAT");
+	print_myType(reconst1[1], "quotient1[1]", "FLOAT");
+	print_myType(reconst1[2], "quotient1[2]", "FLOAT");
+	funcReconstruct(quotient2, reconst2, size, "quotient2", true);
+	print_myType(reconst2[0], "quotient2[0]", "FLOAT");
+	funcReconstruct(quotient3, reconst3, size, "quotient3", true);
 	sum1 = 0;
 	sum2 = 0;
 	sum3 = 0;
@@ -2601,6 +2651,22 @@ void testMaxpool(size_t ih, size_t iw, size_t Din, size_t f, size_t S, size_t B,
 							}
 		//Pooling operation
 		funcMaxpool(temp1, b, c, ow*oh*Din*B, f*f);
+	}
+}
+
+void testPow(){
+	size_t size = 5;
+	vector<myType> data = {floatToMyType(3),floatToMyType(6),floatToMyType(10),
+						floatToMyType(19),floatToMyType(39)},reconst1(size);
+	//vector<myType> data = {3,6,10,19,39},reconst1(size);
+	vector<size_t> result = {1,2,3,4,5};
+	RSSVectorMyType a(size);
+	funcGetShares(a, data);
+	vector<smallType> alpha(size);
+	funcPow(a,alpha,size);
+	for(int i = 0; i < alpha.size(); i++){
+		std::cout<<"alpha["<< i <<"] is:"<< int(alpha[i]) <<std::endl;
+		std::cout<<"result["<< i <<"] is:"<< result[i] <<std::endl;
 	}
 }
 

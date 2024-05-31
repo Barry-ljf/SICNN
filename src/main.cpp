@@ -27,15 +27,15 @@ int main(int argc, char** argv)
 	bool PRELOADING = false;
 
 /****************************** SELECT NETWORK ******************************/ 
-	//Network {SecureML, Sarda, MiniONN, LeNet, AlexNet,RepVgg and VGG16}
-	//Dataset {MNIST, CIFAR10,DIAMOND, and ImageNet}
+	//Network {SecureML, Sarda, MiniONN, LeNet, AlexNet, RepVgg and VGG16}
+	//Dataset {MNIST, CIFAR10, DIAMOND, and ImageNet}
 	//Security {Semi-honest or Malicious}
 	if (argc == 9)
 	{network = argv[6]; dataset = argv[7]; security = argv[8];}
 	else
 	{
-		network = "RepVgg";
-		dataset = "DIAMOND";
+		network = "LeNet";
+		dataset = "MNIST";
 		security = "Semi-honest";
 	}
 	selectNetwork(network, dataset, security, config);
@@ -76,15 +76,15 @@ if (partyNum == PARTY_A)
 	//Run these if you want a preloaded network to be tested
 	// assert(NUM_ITERATIONS == 1 and "check if readMiniBatch is false in test(net)");
 	//First argument {SecureML, Sarda, MiniONN, or LeNet};
-	network += " preloaded"; PRELOADING = true;
-	preload_network(PRELOADING, network, net);
+	// network += " preloaded"; PRELOADING = true;
+	// preload_network(PRELOADING, network, net);
 	//cout<<"code run main.o 81"<<endl;
 	start_m();
 	//Run unit tests in two modes: 
 	//	1. Debug {Mat-Mul, DotProd, PC, Wrap, ReLUPrime, ReLU,FasterDivision, Division, BN, SSBits, SS, AdaptAvgpool and Maxpool}
-	//	2. Test {Division,Mat-Mul1, Mat-Mul2, Mat-Mul3 (and similarly) Conv*, ReLU*, ReLUPrime*, and Maxpool*} where * = {1,2,3}
-	runTest("Debug", "FasterDivision", network);
-	//runTest("Test", "Division", network);
+	//	2. Test {Pow,Division,Mat-Mul1, Mat-Mul2, Mat-Mul3 (and similarly) Conv*, ReLU*, ReLUPrime*, and Maxpool*} where * = {1,2,3}
+	//runTest("Debug", "ReLUPrime", network);
+	runTest("Test", "Pow", network);
 
 	// Run forward/backward for single layers
 	//  1. what {F, D, U}
